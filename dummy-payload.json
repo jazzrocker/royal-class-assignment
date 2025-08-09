@@ -1,0 +1,320 @@
+{
+  "auth": {
+    "signup": {
+      "endpoint": "POST /auth/signup",
+      "payload": {
+        "name": "John Doe",
+        "username": "johndoe",
+        "email": "john@example.com",
+        "password": "Password123"
+      },
+      "response": {
+        "userData": {
+          "_id": "507f1f77bcf86cd799439011",
+          "username": "johndoe",
+          "name": "John Doe",
+          "email": "john@example.com"
+        },
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      }
+    },
+    "login": {
+      "endpoint": "POST /auth/login",
+      "payload": {
+        "usernameOrEmail": "johndoe",
+        "password": "Password123"
+      },
+      "response": {
+        "userData": {
+          "_id": "507f1f77bcf86cd799439011",
+          "username": "johndoe",
+          "name": "John Doe",
+          "email": "john@example.com"
+        },
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      }
+    },
+    "userData": {
+      "endpoint": "GET /auth/user-data",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      },
+      "response": {
+        "_id": "507f1f77bcf86cd799439011",
+        "username": "johndoe",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "activeAuctions": ["507f1f77bcf86cd799439012", "507f1f77bcf86cd799439013"]
+      }
+    }
+  },
+  "auction": {
+    "create": {
+      "endpoint": "POST /auction/create",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      },
+      "payload": {
+        "title": "Luxury Car Auction",
+        "startTime": "2024-01-08T17:30:00.000Z",
+        "endTime": "2024-01-08T18:30:00.000Z",
+        "startingBid": 15000
+      },
+      "response": {
+        "_id": "507f1f77bcf86cd799439012",
+        "carId": null,
+        "title": "Luxury Car Auction",
+        "startTime": "2024-01-08T17:30:00.000Z",
+        "endTime": "2024-01-08T18:30:00.000Z",
+        "startingBid": 15000,
+        "currentHighestBid": 15000,
+        "winnerId": null,
+        "bidId": null,
+        "status": "active",
+        "participants": [],
+        "allParticipants": []
+      }
+    },
+    "createWithCar": {
+      "endpoint": "POST /auction/create",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      },
+      "payload": {
+        "carId": "507f1f77bcf86cd799439014",
+        "title": "BMW M3 Auction",
+        "startTime": "2024-01-09T10:00:00.000Z",
+        "endTime": "2024-01-09T11:00:00.000Z",
+        "startingBid": 25000
+      }
+    },
+    "list": {
+      "endpoint": "GET /auction/list",
+      "queryParams": {
+        "page": 1,
+        "limit": 10,
+        "search": "car",
+        "status": "active"
+      },
+      "response": {
+        "auctions": [
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "carId": null,
+            "title": "Luxury Car Auction",
+            "startTime": "2024-01-08T17:30:00.000Z",
+            "endTime": "2024-01-08T18:30:00.000Z",
+            "startingBid": 15000,
+            "currentHighestBid": 15000,
+            "winnerId": null,
+            "bidId": null,
+            "status": "active",
+            "participants": ["507f1f77bcf86cd799439011"],
+            "allParticipants": ["507f1f77bcf86cd799439011"]
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "limit": 10,
+          "total": 25,
+          "totalPages": 3,
+          "hasNext": true,
+          "hasPrev": false
+        }
+      }
+    }
+  },
+  "websocket": {
+    "connection": {
+      "url": "ws://localhost:3000",
+      "namespace": "/royalClassAuctionRoom",
+      "auth": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      }
+    },
+    "joinRoom": {
+      "event": "join-room",
+      "payload": {
+        "auctionId": "507f1f77bcf86cd799439012"
+      },
+      "response": {
+        "auctionId": "507f1f77bcf86cd799439012",
+        "auctionTitle": "Luxury Car Auction",
+        "currentHighestBid": 15000,
+        "startTime": "2024-01-08T17:30:00.000Z",
+        "endTime": "2024-01-08T18:30:00.000Z",
+        "participants": 5,
+        "message": "Successfully joined auction room"
+      }
+    },
+    "leaveRoom": {
+      "event": "leave-room",
+      "payload": {
+        "auctionId": "507f1f77bcf86cd799439012"
+      },
+      "response": {
+        "auctionId": "507f1f77bcf86cd799439012",
+        "message": "Successfully left auction room"
+      }
+    },
+    "placeBid": {
+      "event": "place-bid",
+      "payload": {
+        "auctionId": "507f1f77bcf86cd799439012",
+        "bidAmount": 16000
+      },
+      "response": {
+        "auctionId": "507f1f77bcf86cd799439012",
+        "bidAmount": 16000,
+        "bidder": "johndoe",
+        "bidderId": "507f1f77bcf86cd799439011",
+        "timestamp": "2024-01-08T17:35:00.000Z"
+      }
+    },
+    "chatMessage": {
+      "event": "chat-message",
+      "payload": {
+        "auctionId": "507f1f77bcf86cd799439012",
+        "message": "Great car! Anyone else bidding?"
+      },
+      "response": {
+        "auctionId": "507f1f77bcf86cd799439012",
+        "message": "Great car! Anyone else bidding?",
+        "user": "johndoe",
+        "userId": "507f1f77bcf86cd799439011",
+        "timestamp": "2024-01-08T17:35:00.000Z"
+      }
+    },
+    "getRoomInfo": {
+      "event": "get-room-info",
+      "payload": {
+        "auctionId": "507f1f77bcf86cd799439012"
+      },
+      "response": {
+        "auctionId": "507f1f77bcf86cd799439012",
+        "clientCount": 5,
+        "clients": ["client1", "client2", "client3", "client4", "client5"],
+        "auctionStatus": {
+          "auctionId": "507f1f77bcf86cd799439012",
+          "status": "active",
+          "currentHighestBid": 16000,
+          "participants": 5,
+          "startTime": "2024-01-08T17:30:00.000Z",
+          "endTime": "2024-01-08T18:30:00.000Z",
+          "isActive": true
+        }
+      }
+    }
+  },
+  "errorResponses": {
+    "invalidCredentials": {
+      "error": "INVALID_CREDENTIALS",
+      "message": "Invalid username/email or password",
+      "statusCode": 401
+    },
+    "userNotFound": {
+      "error": "USER_NOT_FOUND",
+      "message": "User not found",
+      "statusCode": 404
+    },
+    "userAlreadyExists": {
+      "error": "USER_ALREADY_EXISTS",
+      "message": "Username or email already exists",
+      "statusCode": 409
+    },
+    "auctionNotFound": {
+      "error": "AUCTION_NOT_FOUND",
+      "message": "Auction not found",
+      "statusCode": 404
+    },
+    "auctionNotActive": {
+      "error": "AUCTION_NOT_ACTIVE",
+      "message": "Auction is not active",
+      "statusCode": 400
+    },
+    "auctionNotStarted": {
+      "error": "AUCTION_NOT_STARTED",
+      "message": "Auction has not started yet",
+      "statusCode": 400
+    },
+    "auctionEnded": {
+      "error": "AUCTION_ENDED",
+      "message": "Auction has already ended",
+      "statusCode": 400
+    },
+    "alreadyJoinedAuction": {
+      "error": "ALREADY_JOINED_AUCTION",
+      "message": "User has already joined this auction",
+      "statusCode": 400
+    },
+    "notJoinedAuction": {
+      "error": "NOT_JOINED_AUCTION",
+      "message": "User has not joined this auction",
+      "statusCode": 400
+    },
+    "invalidAuctionId": {
+      "error": "INVALID_AUCTION_ID",
+      "message": "Invalid auction ID format",
+      "statusCode": 400
+    },
+    "startTimeMustBeInFuture": {
+      "error": "START_TIME_MUST_BE_IN_FUTURE",
+      "message": "Start time must be in the future",
+      "statusCode": 400
+    },
+    "endTimeMustBeAfterStartTime": {
+      "error": "END_TIME_MUST_BE_AFTER_START_TIME",
+      "message": "End time must be after start time",
+      "statusCode": 400
+    }
+  },
+  "testScenarios": {
+    "createUserAndAuction": {
+      "step1": {
+        "description": "Create a new user",
+        "endpoint": "POST /auth/signup",
+        "payload": {
+          "name": "Test User",
+          "username": "testuser",
+          "email": "test@example.com",
+          "password": "TestPass123"
+        }
+      },
+      "step2": {
+        "description": "Login to get JWT token",
+        "endpoint": "POST /auth/login",
+        "payload": {
+          "usernameOrEmail": "testuser",
+          "password": "TestPass123"
+        }
+      },
+      "step3": {
+        "description": "Create an auction",
+        "endpoint": "POST /auction/create",
+        "headers": {
+          "Authorization": "Bearer {JWT_TOKEN_FROM_STEP2}"
+        },
+        "payload": {
+          "title": "Test Auction",
+          "startTime": "2024-01-08T17:30:00.000Z",
+          "endTime": "2024-01-08T18:30:00.000Z",
+          "startingBid": 1000
+        }
+      },
+      "step4": {
+        "description": "Join auction room via WebSocket",
+        "websocket": {
+          "url": "ws://localhost:3000",
+          "namespace": "/royalClassAuctionRoom",
+          "auth": {
+            "token": "{JWT_TOKEN_FROM_STEP2}"
+          },
+          "event": "join-room",
+          "payload": {
+            "auctionId": "{AUCTION_ID_FROM_STEP3}"
+          }
+        }
+      }
+    }
+  }
+}

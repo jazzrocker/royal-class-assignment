@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auction WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%);
+        color: #e0e0e0;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      }
+
+      h1 {
+        text-align: center;
+        color: #ff4444;
+        font-size: 2.5rem;
+        margin-bottom: 30px;
+        text-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+      }
+
+      h2 {
+        color: #ff4444;
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+        border-bottom: 2px solid #ff4444;
+        padding-bottom: 10px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #cccccc;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 12px 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        color: #e0e0e0;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: #ff4444;
+        box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.1);
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      input::placeholder,
+      textarea::placeholder {
+        color: #888;
+      }
+
+      button {
+        background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+        color: #ffffff;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-right: 12px;
+        margin-bottom: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(255, 68, 68, 0.3);
+        background: linear-gradient(135deg, #ff6666 0%, #dd2222 100%);
+      }
+
+      button:disabled {
+        background: linear-gradient(135deg, #666 0%, #444 100%);
+        color: #999;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .status {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-weight: 600;
+        text-align: center;
+        border: 2px solid;
+      }
+
+      .status.connected {
+        background: rgba(76, 175, 80, 0.1);
+        color: #4caf50;
+        border-color: #4caf50;
+      }
+
+      .status.disconnected {
+        background: rgba(255, 68, 68, 0.1);
+        color: #ff4444;
+        border-color: #ff4444;
+      }
+
+      .status.connecting {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+        border-color: #ffc107;
+      }
+
+      .log {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 20px;
+        height: 350px;
+        overflow-y: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .log::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .log::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+      }
+
+      .log::-webkit-scrollbar-thumb {
+        background: rgba(255, 68, 68, 0.5);
+        border-radius: 4px;
+      }
+
+      .log-entry {
+        margin-bottom: 8px;
+        padding: 4px 0;
+        border-radius: 4px;
+        padding-left: 8px;
+      }
+
+      .log-entry.info {
+        color: #ff4444;
+        border-left: 3px solid #ff4444;
+      }
+
+      .log-entry.success {
+        color: #4caf50;
+        border-left: 3px solid #4caf50;
+      }
+
+      .log-entry.error {
+        color: #ff6666;
+        border-left: 3px solid #ff6666;
+      }
+
+      .log-entry.warning {
+        color: #ffc107;
+        border-left: 3px solid #ffc107;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+      }
+
+      .auction-info {
+        background: rgba(255, 68, 68, 0.1);
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 15px;
+        border: 1px solid rgba(255, 68, 68, 0.3);
+      }
+
+      .auction-info h3 {
+        color: #ff4444;
+        margin-bottom: 15px;
+      }
+
+      .auction-info p {
+        margin-bottom: 8px;
+        color: #cccccc;
+      }
+
+      .auction-info strong {
+        color: #ff4444;
+      }
+
+      @media (max-width: 768px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        
+        body {
+          padding: 15px;
+        }
+        
+        .container {
+          padding: 20px;
+        }
+        
+        h1 {
+          font-size: 2rem;
+        }
+      }
+
+      /* Glow effect for active elements */
+      .container:hover {
+        box-shadow: 0 8px 32px rgba(255, 68, 68, 0.1);
+      }
+
+      /* Animation for status changes */
+      .status {
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Custom select styling */
+      select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ff4444' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 12px center;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        padding-right: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Auction WebSocket Test Interface</h1>
+
+    <div class="container">
+      <h2>Connection Settings</h2>
+      <div class="form-group">
+        <label for="serverUrl">Server URL:</label>
+        <input
+          type="text"
+          id="serverUrl"
+          value="http://localhost:4000"
+          placeholder="http://localhost:4000"
+        />
+      </div>
+      <div class="form-group">
+        <label for="namespace">Namespace:</label>
+        <input
+          type="text"
+          id="namespace"
+          value="/royalClassAuctionRoom"
+          placeholder="/royalClassAuctionRoom"
+        />
+      </div>
+      <div class="form-group">
+        <label for="jwtToken">JWT Token:</label>
+        <input
+          id="jwtToken"
+          rows="3"
+          placeholder="Enter your JWT token here..."
+          value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODk2M2U0YzIzNmZhMTI4MDI4MzJhMzUiLCJ1c2VybmFtZSI6ImFudXJhZzEyMyIsImVtYWlsIjoiYW51cmFnQGV4YW1wbGUuY29tIiwibmFtZSI6ImFudXJhZyIsImlhdCI6MTc1NDcyNzkwNiwiZXhwIjoxNzU0ODE0MzA2fQ.4qz2fUYEl3JzwzJR7VL1KNS7YyfcHsyvZBHu2MxmEEM"
+        />
+      </div>
+      <button onclick="connect()" id="connectBtn">Connect</button>
+      <button onclick="disconnect()" id="disconnectBtn" disabled>
+        Disconnect
+      </button>
+    </div>
+
+    <div class="container">
+      <h2>Connection Status</h2>
+      <div id="connectionStatus" class="status disconnected">Disconnected</div>
+    </div>
+
+    <div class="grid">
+      <div class="container">
+        <h2>Join Auction Room</h2>
+        <div class="form-group">
+          <label for="auctionId">Auction ID:</label>
+          <input type="text" id="auctionId" placeholder="Enter auction ID..." value="68963e6b236fa12802832a38"/>
+        </div>
+        <button onclick="joinRoom()" id="joinBtn" disabled>Join Room</button>
+        <button onclick="leaveRoom()" id="leaveBtn" disabled>Leave Room</button>
+
+        <div id="auctionInfo" class="auction-info" style="display: none">
+          <h3>Auction Information</h3>
+          <div id="auctionDetails"></div>
+        </div>
+      </div>
+
+      <div class="container">
+        <h2>Place Bid</h2>
+        <div class="form-group">
+          <label for="bidAuctionId">Auction ID:</label>
+          <input
+            type="text"
+            id="bidAuctionId"
+            placeholder="Enter auction ID"
+          />
+        </div>
+        <div class="form-group">
+          <label for="bidAmount">Bid Amount:</label>
+          <input
+            type="number"
+            id="bidAmount"
+            placeholder="Enter bid amount"
+            min="0"
+            step="0.01"
+          />
+        </div>
+        <button onclick="placeBid()" id="placeBidBtn" disabled>
+          Place Bid
+        </button>
+      </div>
+    </div>
+
+    <div class="container">
+      <h2>Event Log</h2>
+      <div id="log" class="log"></div>
+      <button onclick="clearLog()" style="margin-top: 15px">Clear Log</button>
+    </div>
+
+    <script>
+      let socket = null;
+      let currentRoom = null;
+
+      function log(message, type = "info") {
+        const logDiv = document.getElementById("log");
+        const timestamp = new Date().toLocaleTimeString();
+        const entry = document.createElement("div");
+        entry.className = `log-entry ${type}`;
+        entry.textContent = `[${timestamp}] ${message}`;
+        logDiv.appendChild(entry);
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      function clearLog() {
+        document.getElementById("log").innerHTML = "";
+      }
+
+      function updateConnectionStatus(status, message) {
+        const statusDiv = document.getElementById("connectionStatus");
+        statusDiv.className = `status ${status}`;
+        statusDiv.textContent = message;
+      }
+
+      function updateButtons() {
+        const isConnected = socket && socket.connected;
+        document.getElementById("connectBtn").disabled = isConnected;
+        document.getElementById("disconnectBtn").disabled = !isConnected;
+        document.getElementById("joinBtn").disabled = !isConnected;
+        document.getElementById("leaveBtn").disabled =
+          !isConnected || !currentRoom;
+        document.getElementById("placeBidBtn").disabled = !isConnected;
+      }
+
+      function connect() {
+        const serverUrl = document.getElementById("serverUrl").value;
+        const namespace = document.getElementById("namespace").value;
+        const token = document.getElementById("jwtToken").value.trim();
+
+        if (!token) {
+          alert("Please enter a JWT token");
+          return;
+        }
+
+        log(`Connecting to ${serverUrl}${namespace}...`, "info");
+        updateConnectionStatus("connecting", "Connecting...");
+
+        socket = io(serverUrl + namespace, {
+          transports: ["websocket"],
+          auth: { token },
+        });
+
+        socket.on("connect", () => {
+          log("Connected to auction room server", "success");
+          updateConnectionStatus("connected", "Connected");
+          updateButtons();
+        });
+
+        socket.on("disconnect", () => {
+          log("Disconnected from auction room server", "warning");
+          updateConnectionStatus("disconnected", "Disconnected");
+          currentRoom = null;
+          updateButtons();
+          document.getElementById("auctionInfo").style.display = "none";
+        });
+
+        socket.on("connect_error", (error) => {
+          log(`Connection error: ${error.message}`, "error");
+          updateConnectionStatus("disconnected", "Connection Failed");
+          updateButtons();
+        });
+
+        // Auction room specific events
+        socket.on("member-joined", (data) => {
+          log(`${data.notification}`,"success");
+          if (data.playerData && data.playerData.auctionId) {
+            currentRoom = data.playerData.auctionId;
+            updateButtons();
+          }
+        });
+
+        socket.on("player-left", (data) => {
+          log(`Player left auction: ${data.userId}`, "info");
+        });
+
+        socket.on("bid-placed", (data) => {
+          log(
+            `New bid placed: $${data.bidAmount} by ${data.bidder}`,
+            "success"
+          );
+        });
+
+        socket.on("chat-message", (data) => {
+          log(`Chat: ${data.user} says: ${data.message}`, "info");
+        });
+
+        socket.on("game-update", (data) => {
+          log(`Auction update: ${JSON.stringify(data)}`, "info");
+        });
+
+        socket.on("room-message", (data) => {
+          log(`Room message: ${data.message} from ${data.senderId}`, "info");
+        });
+
+        socket.on("error", (data) => {
+          log(`Error: ${data.message}`, "error");
+        });
+        socket.onAny((event, data) => {
+          log(`Event Received: ${event}`, "info");
+        });
+      }
+
+      function disconnect() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+      }
+
+      function joinRoom() {
+        const auctionId = document.getElementById("auctionId").value.trim();
+
+        if (!auctionId) {
+          alert("Please enter an auction ID");
+          return;
+        }
+
+        if (!socket || !socket.connected) {
+          alert("Please connect to the server first");
+          return;
+        }
+
+        log(`Joining auction room: ${auctionId}`, "info");
+        socket.emit("joinAuction", { auctionId });
+      }
+
+      function leaveRoom() {
+        if (!currentRoom) {
+          alert("Not in any room");
+          return;
+        }
+
+        log(`Leaving auction room: ${currentRoom}`, "info");
+        socket.emit("leave-room", { auctionId: currentRoom });
+      }
+
+      function placeBid() {
+        const auctionId = document.getElementById("bidAuctionId").value.trim();
+        const bidAmount = parseFloat(document.getElementById("bidAmount").value);
+
+        if (!auctionId) {
+          alert("Please enter an auction ID");
+          return;
+        }
+
+        if (!bidAmount || bidAmount <= 0) {
+          alert("Please enter a valid bid amount");
+          return;
+        }
+
+        if (!socket || !socket.connected) {
+          alert("Please connect to the server first");
+          return;
+        }
+
+        const payload = {
+          auctionId: auctionId,
+          bidAmount: bidAmount,
+        };
+
+        log(`Placing bid: $${bidAmount} for auction ${auctionId}`, "info");
+        socket.emit("placeBid", payload);
+      }
+
+      // Initialize
+      updateButtons();
+      log(
+        "Auction room test interface loaded. Enter JWT token and click Connect to start.",
+        "info"
+      );
+    </script>
+  </body>
+</html>
