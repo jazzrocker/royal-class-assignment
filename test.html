@@ -297,7 +297,7 @@
           id="jwtToken"
           rows="3"
           placeholder="Enter your JWT token here..."
-          value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODk2M2U0YzIzNmZhMTI4MDI4MzJhMzUiLCJ1c2VybmFtZSI6ImFudXJhZzEyMyIsImVtYWlsIjoiYW51cmFnQGV4YW1wbGUuY29tIiwibmFtZSI6ImFudXJhZyIsImlhdCI6MTc1NDcyNzkwNiwiZXhwIjoxNzU0ODE0MzA2fQ.4qz2fUYEl3JzwzJR7VL1KNS7YyfcHsyvZBHu2MxmEEM"
+          value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODliMjA5ZWJiNDEwNzllMTdkNGY5MjgiLCJ1c2VybmFtZSI6ImpvaG5kb2UiLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJuYW1lIjoiSm9obiBEb2UiLCJpYXQiOjE3NTQ5OTk2MTAsImV4cCI6MTc1NTA4NjAxMH0.PzKdkvDVFqkE69ptR5Nn9QMp9q6S5xou5XomCAdJEL4"
         />
       </div>
       <button onclick="connect()" id="connectBtn">Connect</button>
@@ -316,7 +316,7 @@
         <h2>Join Auction Room</h2>
         <div class="form-group">
           <label for="auctionId">Auction ID:</label>
-          <input type="text" id="auctionId" placeholder="Enter auction ID..." value="68963e6b236fa12802832a38"/>
+          <input type="text" id="auctionId" placeholder="Enter auction ID..." value="689b24043296ffe4034df173"/>
         </div>
         <button onclick="joinRoom()" id="joinBtn" disabled>Join Room</button>
         <button onclick="leaveRoom()" id="leaveBtn" disabled>Leave Room</button>
@@ -335,6 +335,7 @@
             type="text"
             id="bidAuctionId"
             placeholder="Enter auction ID"
+            value="689b24043296ffe4034df173"
           />
         </div>
         <div class="form-group">
@@ -393,6 +394,23 @@
         document.getElementById("placeBidBtn").disabled = !isConnected;
       }
 
+      function displayAuctionInfo(auctionData) {
+        const auctionInfoDiv = document.getElementById("auctionInfo");
+        const detailsDiv = document.getElementById("auctionDetails");
+        
+        if (auctionData) {
+          detailsDiv.innerHTML = `
+            <p><strong>Auction ID:</strong> ${auctionData._id || auctionData.auctionId || 'N/A'}</p>
+            <p><strong>Title:</strong> ${auctionData.title || 'N/A'}</p>
+            <p><strong>Status:</strong> ${auctionData.status || 'N/A'}</p>
+            <p><strong>Current Highest Bid:</strong> $${auctionData.currentHighestBid || 'N/A'}</p>
+            <p><strong>Starting Bid:</strong> $${auctionData.startingBid || 'N/A'}</p>
+            <p><strong>Participants:</strong> ${auctionData.participantCount || auctionData.participants?.length || 0}</p>
+          `;
+          auctionInfoDiv.style.display = "block";
+        }
+      }
+
       function connect() {
         const serverUrl = document.getElementById("serverUrl").value;
         const namespace = document.getElementById("namespace").value;
@@ -432,12 +450,42 @@
         });
 
         // Auction room specific events
-        socket.on("member-joined", (data) => {
-          log(`${data.notification}`,"success");
-          if (data.playerData && data.playerData.auctionId) {
-            currentRoom = data.playerData.auctionId;
+        socket.on("room-joined", (data) => {
+          log(`Successfully joined auction room!`, "success");
+          console.log("Room joined data:", data);
+          
+          // Set current room from the auctionId we just joined
+          const auctionId = document.getElementById("auctionId").value.trim();
+          if (auctionId) {
+            currentRoom = auctionId;
             updateButtons();
+            
+            // Show auction info if available
+            if (data.data) {
+              displayAuctionInfo(data.data);
+            }
           }
+        });
+
+        socket.on("room-joined-error", (data) => {
+          log(`Failed to join room: ${data.message}`, "error");
+          currentRoom = null;
+          updateButtons();
+        });
+
+        socket.on("room-left", (data) => {
+          log(`Successfully left auction room`, "success");
+          currentRoom = null;
+          updateButtons();
+          document.getElementById("auctionInfo").style.display = "none";
+        });
+
+        socket.on("room-left-error", (data) => {
+          log(`Failed to leave room: ${data.message}`, "error");
+        });
+
+        socket.on("member-joined", (data) => {
+          log(`${data.notification}`, "success");
         });
 
         socket.on("player-left", (data) => {
@@ -445,10 +493,12 @@
         });
 
         socket.on("bid-placed", (data) => {
-          log(
-            `New bid placed: $${data.bidAmount} by ${data.bidder}`,
-            "success"
-          );
+          log(`Bid placed successfully!`, "success");
+          console.log("Bid data:", data);
+        });
+
+        socket.on("bid-placed-error", (data) => {
+          log(`Failed to place bid: ${data.message}`, "error");
         });
 
         socket.on("chat-message", (data) => {
@@ -463,9 +513,14 @@
           log(`Room message: ${data.message} from ${data.senderId}`, "info");
         });
 
+        socket.on("throttle-error", (data) => {
+          log(`Rate limit exceeded: ${data.message}`, "warning");
+        });
+
         socket.on("error", (data) => {
           log(`Error: ${data.message}`, "error");
         });
+        
         socket.onAny((event, data) => {
           log(`Event Received: ${event}`, "info");
         });
@@ -539,6 +594,7 @@
         "Auction room test interface loaded. Enter JWT token and click Connect to start.",
         "info"
       );
+      // connect()
     </script>
   </body>
 </html>

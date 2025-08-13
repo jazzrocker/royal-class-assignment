@@ -49,7 +49,7 @@ export abstract class BaseGateway
       const token = client.handshake.auth?.token;
       
       if (!token) {
-        this.logger.error(`❌ No token provided for client: ${client.id}`);
+        this.logger.debug(`No token provided for client: ${client.id}, not connecting to socket.`);
         client.disconnect(true);
         return;
       }

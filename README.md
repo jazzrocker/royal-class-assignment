@@ -10,6 +10,7 @@ A comprehensive NestJS backend application featuring real-time auction managemen
 - **🔄 Automated Auction Management** - Cron jobs for auction lifecycle
 - **📊 Comprehensive APIs** - RESTful endpoints for all operations
 - **🛡️ Security Guards** - Both HTTP and WebSocket authentication
+- **🚦 Rate Limiting & Throttling** - Advanced protection against abuse
 - **📚 MongoDB Integration** - Robust data persistence with Mongoose
 - **🎯 Modular Architecture** - Clean, scalable code structure
 
@@ -59,7 +60,7 @@ src/
 │   ├── gateways/               # WebSocket gateway setup
 │   └── services/               # WebSocket helpers
 ├── ⚙️ common/                   # Shared Utilities
-│   ├── guards/                 # Authentication guards
+│   ├── guards/                 # Authentication & throttling guards
 │   ├── schemas/                # Database schemas
 │   ├── constants/              # Application constants
 │   ├── errors/                 # Error handling
@@ -507,6 +508,19 @@ socket.on('bid-placed-error', (data) => {
 });
 ```
 
+**Server → Client: Rate Limit Error**
+```javascript
+socket.on('throttle-error', (data) => {
+  console.log('Rate limited:', data.message);
+  console.log('Retry after:', data.retryAfter + 'ms');
+  
+  // Disable UI elements temporarily
+  setTimeout(() => {
+    // Re-enable actions after cooldown
+  }, data.retryAfter);
+});
+```
+
 #### 🔄 Auction Lifecycle Events
 
 **Server → All Clients: Auction Ended**
@@ -727,6 +741,134 @@ async auctionCron() {
 - **DTO Validation** - class-validator for request validation
 - **Type Safety** - TypeScript for compile-time safety
 - **Error Handling** - Centralized error management
+
+## 🛡️ Rate Limiting & Throttling
+
+The application implements comprehensive rate limiting for both HTTP and WebSocket endpoints to prevent abuse and ensure fair usage.
+
+### HTTP Throttling
+
+HTTP endpoints use the `@nestjs/throttler` package with customizable rate limits per route:
+
+```typescript
+// Global throttler configuration
+ThrottlerModule.forRoot([{
+  ttl: 2000, // 2 seconds in milliseconds
+  limit: 1,  // 1 request per ttl window
+}])
+
+// Route-specific throttling
+@Post('login')
+@Throttle({ default: { limit: 1, ttl: 500 } }) // 1 req per 500ms
+@UseGuards(ThrottlerGuard)
+async login(@Body() loginDto: LoginDto) {
+  // Login logic
+}
+```
+
+### WebSocket Throttling
+
+Custom WebSocket throttler guard extends the base throttler for real-time connections:
+
+```typescript
+@Injectable()
+export class WsThrottlerGuard extends ThrottlerGuard {
+  async handleRequest(requestProps: ThrottlerRequest): Promise<boolean> {
+    const { context, limit, ttl, blockDuration, throttler } = requestProps;
+    const client = context.switchToWs().getClient();
+    
+    // Use client ID + user ID for unique throttling
+    const userId = client.data?.socketUserData?.userId;
+    const key = this.generateKey(context, `${client.id}-${userId}`, throttler.name);
+    
+    // When rate limited, emit error to client
+    if (totalHits > limit) {
+      client.emit('throttle-error', {
+        message: `Rate limit exceeded. Try again in ${Math.round(timeToBlockExpire / 1000)} seconds.`,
+        retryAfter: timeToBlockExpire,
+      });
+      throw new WsException('Rate limit exceeded');
+    }
+    return true;
+  }
+}
+```
+
+### Rate Limiting Configuration
+
+#### Current Rate Limits
+
+| Endpoint Type | Route | Rate Limit | Purpose |
+|---------------|-------|------------|---------|
+| **HTTP** | `POST /auth/login` | 1 req per 500ms | Prevent brute force attacks |
+| **HTTP** | `POST /auth/signup` | 2 req per 10s | Prevent spam registrations |
+| **HTTP** | `POST /auction/create` | 5 req per minute | Resource-intensive operations |
+| **HTTP** | `GET /auction/active` | 30 req per minute | Read-heavy operations |
+| **WebSocket** | `joinAuction` | 5 req per 10s | Prevent room spam |
+| **WebSocket** | `placeBid` | 1 req per 2s | Critical bidding actions |
+| **WebSocket** | `leave-room` | 1 req per 1s | Room management |
+
+#### Throttling Features
+
+- **User-Specific Limiting** - Each user has individual rate limits
+- **Route-Specific Configuration** - Different limits for different operations
+- **Graceful Error Handling** - Clear error messages with retry times
+- **WebSocket Integration** - Real-time throttle notifications
+- **Memory Efficient** - Uses in-memory storage for tracking
+
+### Usage Examples
+
+#### HTTP Throttling
+```typescript
+// Custom throttling for specific routes
+@Throttle({ default: { limit: 3, ttl: 10000 } }) // 3 req per 10 seconds
+@UseGuards(ThrottlerGuard)
+@Post('sensitive-operation')
+async sensitiveOperation() {
+  // Route logic
+}
+```
+
+#### WebSocket Throttling
+```typescript
+// Apply to WebSocket message handlers
+@SubscribeMessage("criticalAction")
+@Throttle({ default: { limit: 1, ttl: 5000 } }) // 1 req per 5 seconds
+@UseGuards(WsThrottlerGuard)
+async handleCriticalAction(@MessageBody() data: any) {
+  // WebSocket handler logic
+}
+```
+
+#### Client-Side Handling
+```javascript
+// Handle throttle errors in WebSocket client
+socket.on('throttle-error', (data) => {
+  console.log(`Rate limited: ${data.message}`);
+  console.log(`Retry after: ${data.retryAfter}ms`);
+  
+  // Disable buttons or show countdown
+  setTimeout(() => {
+    // Re-enable actions
+  }, data.retryAfter);
+});
+
+// Handle HTTP throttle errors
+fetch('/api/endpoint')
+  .catch(error => {
+    if (error.status === 429) {
+      console.log('Rate limited. Please wait before trying again.');
+    }
+  });
+```
+
+### Security Benefits
+
+- **DDoS Protection** - Prevents overwhelming the server
+- **Brute Force Prevention** - Limits login attempts
+- **Fair Resource Usage** - Ensures equitable access
+- **WebSocket Abuse Prevention** - Limits real-time message spam
+- **API Stability** - Maintains consistent performance
 
 ## 🚀 Running the Application
 

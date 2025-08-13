@@ -47,7 +47,7 @@ export class RoomEmitter {
       console.warn('Server not initialized in RoomEmitter');
       return;
     }
-    
+    console.log(`Emitting user notification to ${userId}: ${message}`);
     this.server.emit(`user:${userId}`, {
       notification: message,
     });

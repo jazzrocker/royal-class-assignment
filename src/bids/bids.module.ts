@@ -7,6 +7,7 @@ import { Auction, AuctionSchema } from '../common/schemas/auction.schema';
 import { User, UserSchema } from '../common/schemas/user.schema';
 import { CommonModule } from '../common/common.module';
 import { AuctionModule } from '../auction/auction.module';
+import { MyBidsService } from './services/my-bids.service';
 
 @Module({
   imports: [
@@ -16,10 +17,10 @@ import { AuctionModule } from '../auction/auction.module';
       { name: User.name, schema: UserSchema }
     ]),
     CommonModule,
-    AuctionModule
+    AuctionModule,
   ],
   controllers: [BidsController],
-  providers: [PlaceBidsService],
-  exports: [PlaceBidsService]
+  providers: [PlaceBidsService, MyBidsService],
+  exports: [PlaceBidsService, MyBidsService]
 })
 export class BidsModule {}

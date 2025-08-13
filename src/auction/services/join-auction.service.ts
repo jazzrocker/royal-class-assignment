@@ -6,13 +6,15 @@ import { Bids } from "src/common/schemas/bids.schema";
 import { AuctionHelperService } from "./auction-helper.service";
 import { RESPONSE_CONSTANTS } from "src/common/constants/response.constants";
 import { ServiceError } from "src/common/errors/service.error";
+import { RoomEmitter } from "src/websocket/emitters/room.emitter";
 
 @Injectable()
 export class JoinAuctionService {
   constructor(
     @InjectModel(Auction.name) private auctionModel: Model<AuctionDocument>,
     @InjectModel(Bids.name) private bidsModel: Model<Bids>,
-    private auctionHelperService: AuctionHelperService
+    private auctionHelperService: AuctionHelperService,
+    private roomEmitter: RoomEmitter
   ) {}
 
   async joinAuction(auctionId: string, userId: string) {
@@ -24,24 +26,27 @@ export class JoinAuctionService {
     // Find the auction
     const auction =
       await this.auctionHelperService.getAuctionDetails(auctionId);
-
     if (!auction) {
+      this.roomEmitter.emitUserNotification('Auction not found.', userId);
       throw new ServiceError(RESPONSE_CONSTANTS.AUCTION_NOT_FOUND);
     }
 
     // Check if auction is active
     if (auction.status !== "active") {
+      this.roomEmitter.emitUserNotification('Auction not active.', userId);
       throw new ServiceError(RESPONSE_CONSTANTS.AUCTION_NOT_ACTIVE);
     }
 
     // Check if auction has started
     const now = new Date();
     if (auction.startTime > now) {
+      this.roomEmitter.emitUserNotification('Auction not started yet.', userId);
       throw new ServiceError(RESPONSE_CONSTANTS.AUCTION_NOT_STARTED);
     }
 
     // Check if auction has ended
     if (auction.endTime < now) {
+      this.roomEmitter.emitUserNotification('Auction ended.', userId);
       throw new ServiceError(RESPONSE_CONSTANTS.AUCTION_ENDED);
     }
 
